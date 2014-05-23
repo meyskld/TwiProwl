@@ -18,6 +18,7 @@ require 'yaml'
 require 'logger'
 require 'pstore'
 require 'thread'
+require 'httpclient'
 begin
  require 'growl'
  require 'fileutils'
@@ -354,6 +355,26 @@ class TwiProwl
       query = params.map do |key, val| "#{key}=#{post_escape(val.to_s)}" end
       res = http.request( request, query.join( '&' ) )
       debug "NMA Response: #{res.code}"
+    rescue
+      error "Error while Prowling: #{$!}"
+    end
+  end
+
+  def pushbullet( icon, params={}, user = nil )
+    begin
+      url = URI.parse("https://api.pushbullet.com/v2/pushes")
+      req = Net::HTTP::Post.new(url.path)
+      req.basic_auth @@conf['Pushbullet']['APIKey'], ''
+      req.set_form_data({
+        :device_iden => @@conf['Pushbullet']['DeviceIden'],
+        :type => "note",
+        :title => params[:event],
+        :body => params[:description],
+      })
+      res = Net::HTTP.new(url.host, url.port)
+      res.use_ssl = true
+      res.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      res.start {|http| http.request(req) }
     rescue
       error "Error while Prowling: #{$!}"
     end
