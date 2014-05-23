@@ -367,8 +367,9 @@ class TwiProwl
       req.basic_auth @@conf['Pushbullet']['APIKey'], ''
       req.set_form_data({
         :device_iden => @@conf['Pushbullet']['DeviceIden'],
-        :type => "note",
+        :type => "link",
         :title => params[:event],
+        :url => params[:url],
         :body => params[:description],
       })
       res = Net::HTTP.new(url.host, url.port)
@@ -498,6 +499,9 @@ class TwiProwl
       source = nil
     end
 
+    if source && json['id_str']
+        tweeturl = "https://twitter.com/%s/status/%s" % [source, json['id_str']]
+    end
     if source and @unfollowed.followers.include?( sid )
       @@mutex.synchronize do
         @pdb.transaction do
@@ -515,11 +519,14 @@ class TwiProwl
       desc = unescape( retweets['text'] )
       event = "Retweeted by @#{source}" 
       info "Notify: %s %s" % [ event, desc ]
-      notify( Unicode::E00F, {
+      params = {
              :application=> @application,
              :event => event,
              :description => desc,
-             :priority => @retweets.priority }, source_user ) if @retweets.enable
+             :priority => @retweets.priority }
+
+      params[:url] = tweeturl if tweeturl
+      notify( Unicode::E00F, params, source_user ) if @retweets.enable
       return
     end
 
@@ -530,11 +537,14 @@ class TwiProwl
       desc = unescape( json['text'] )
       event = "Mentioned by @#{source}"
       info "Notify: %s %s" % [ event, desc ]
-      notify( Unicode::E10F, {
+      params =  {
              :application=> @application,
              :event => event,
              :description => desc,
-             :priority => @mentions.priority }, source_user ) if @mentions.enable
+             :priority => @mentions.priority }
+
+      params[:url] = tweeturl if tweeturl
+      notify( Unicode::E10F, params, source_user ) if @mentions.enable
       return
     end
 
@@ -544,11 +554,14 @@ class TwiProwl
       desc = unescape( message['text'] )
       event = "DM from @#{message['sender_screen_name']}"
       info "Notify: %s %s" % [ event, desc ]
-      notify( Unicode::E103, {
+      params =  {
              :application => @application,
              :event => event,
              :description => desc,
-             :priority => @direct.priority }, source_user ) if @direct.enable
+             :priority => @direct.priority }
+
+      params[:url] = tweeturl if tweeturl
+      notify( Unicode::E103, params, source_user ) if @direct.enable
       return
     end
 
@@ -566,12 +579,14 @@ class TwiProwl
         t = Regexp.new( body_text )
         if u =~ sname and t =~ desc
           info "Notify: RegexpMatch"
-          notify( Unicode::E317, {
+          params =  {
              :application=> @application,
              :event => "@#{source} says",
              :description => desc,
-             :priority => m.key?( 'Priority' ) ? m['Priority'] : 0 },
-             source_user )
+             :priority => m.key?( 'Priority' ) ? m['Priority'] : 0 }
+          
+          params[:url] = tweeturl if tweeturl
+          notify( Unicode::E317, params, source_user )
           return
         end
       end
@@ -582,11 +597,14 @@ class TwiProwl
     when "follow"
       if source != @user && @unfollowed.enable
         desc = "You have been followed by #{source}"
-        notify( Unicode::E022, {
+        params =  {
               :application=> @application,
               :event => "Followed",
               :description => desc,
-              :priority => @unfollowed.priority }, source_user )
+              :priority => @unfollowed.priority }
+
+        params[:url] = "https://twitter.com/#{source}" if source
+        notify( Unicode::E022, params, source_user )
       end
     when "list_member_added"
       if json['target']['screen_name'] == @user and @membership.enable and
@@ -618,12 +636,14 @@ class TwiProwl
         text = json['target_object']['text']
         desc = unescape( text )
         info "Notify: favorite %s" % [ desc ]
-        notify( Unicode::E32F, {
+        params = {
                :application=> @application,
                :event => "Favorite by @#{source}",
                :description => desc,
-               :priority => @favorite.priority },
-               source_user )
+               :priority => @favorite.priority }
+
+        params[:url] = tweeturl if tweeturl
+        notify( Unicode::E32F, params, source_user )
       end
     when "unfavorite"
       target = json['target_object']['user']['screen_name']
