@@ -361,6 +361,7 @@ class TwiProwl
   end
 
   def pushbullet( icon, params={}, user = nil )
+    params[:link] = params[:url] if params[:url]
     begin
       url = URI.parse("https://api.pushbullet.com/v2/pushes")
       req = Net::HTTP::Post.new(url.path)
@@ -369,7 +370,7 @@ class TwiProwl
         :device_iden => @@conf['Pushbullet']['DeviceIden'],
         :type => "link",
         :title => params[:event],
-        :url => params[:url],
+        :url => params[:link],
         :body => params[:description],
       })
       res = Net::HTTP.new(url.host, url.port)
