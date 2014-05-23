@@ -15,11 +15,16 @@ NMA:
 Growl:
   Sticky: 0    # lowest priority to enable stikcy option
 
+Pushbullet:
+ APIKey: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ DeviceIden: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 Accounts:
  -
   Application: "Twitter"
   NotifyMethods:
     - "prowl" # Prowl for iPhone
+    - "pushbullet" #Pushbullet
 #   - "nma"   # Notify My Android for Android
 #   - "growl" # use growlnotify, it requires growl.gem and growlnotify
   User: example_username
